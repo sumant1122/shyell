@@ -17,6 +17,7 @@ Unlike traditional shells that are passive, Shyell is active. It monitors your s
 ## 🛠 Features
 
 - **Pipelines & Redirections**: Full support for `|`, `>`, `>>`, and `<`.
+- **Intelligent Tab Completion**: Autocomplete built-in commands, external binaries in your `$PATH`, and file paths.
 - **Variable Expansion**: Supports standard `$VAR` and `${VAR}` syntax.
 - **Benchmark Command**: Prefix any command with `bench` to measure its impact.
 - **History Management**: Persistent command history via `rustyline`.

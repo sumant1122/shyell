@@ -3,17 +3,19 @@ mod parser;
 mod executor;
 mod builtins;
 mod monitor;
+mod completion;
 
 use std::env;
 use std::path::PathBuf;
 use rustyline::error::ReadlineError;
-use rustyline::DefaultEditor;
+use rustyline::{Config, Editor, EditMode};
 use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind};
 
 use crate::state::ShellState;
 use crate::parser::parse_commands;
 use crate::executor::execute_commands;
 use crate::monitor::Monitor;
+use crate::completion::ShyellHelper;
 
 fn get_prompt(state: &mut ShellState) -> String {
     // Refresh system stats for the prompt
@@ -72,7 +74,14 @@ fn get_prompt(state: &mut ShellState) -> String {
 
 fn main() {
     let mut state = ShellState::new();
-    let mut rl = DefaultEditor::new().unwrap();
+    
+    let config = Config::builder()
+        .edit_mode(EditMode::Emacs)
+        .completion_type(rustyline::CompletionType::List)
+        .build();
+    
+    let mut rl: Editor<ShyellHelper, _> = Editor::with_config(config).unwrap();
+    rl.set_helper(Some(ShyellHelper::new()));
 
     let _ = rl.load_history(&state.history_path);
 
