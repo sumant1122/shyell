@@ -43,3 +43,37 @@ cargo build --release
 - `history`: View historical benchmark results.
 - `bench <cmd>`: Execute and benchmark a command.
 - `cd`, `pwd`, `echo`, `exit`: Standard shell operations.
+
+## 📖 Example Usage
+
+### 1. System Health Check
+Get a quick dashboard of your machine's current state:
+```bash
+sys
+```
+
+### 2. Performance Benchmarking
+Measure exactly how long a build or script takes:
+```bash
+bench cargo build --release
+```
+*Shyell will automatically record this and alert you if future runs are significantly slower.*
+
+### 3. Advanced Pipelines & Redirection
+Combine tools and save output just like in Bash:
+```bash
+ls -la | grep "rs" > rust_files.txt
+```
+
+### 4. Project-Aware Context
+Enter a directory and watch the prompt adapt:
+```bash
+cd my_rust_project
+# The prompt will now show the size of the target/ directory
+```
+
+### 5. Historical Analysis
+Review your past performance benchmarks:
+```bash
+history
+```
