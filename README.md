@@ -31,6 +31,17 @@ Unlike traditional shells that are passive, Vantage is active. It monitors your 
 - `src/parser.rs`: Shell command parsing and expansion.
 - `src/builtins.rs`: Native shell commands.
 
+## 🤝 Community and Contributing
+
+We welcome contributions of all kinds! Please see our:
+- [Contributing Guidelines](CONTRIBUTING.md) for how to get started.
+- [Code of Conduct](CODE_OF_CONDUCT.md) for our community standards.
+- [Changelog](CHANGELOG.md) for a history of changes.
+
+## 📄 License
+
+This project is licensed under the terms of the [LICENSE](LICENSE) file.
+
 ## 📥 Installation
 
 ```bash
