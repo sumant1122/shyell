@@ -1,7 +1,7 @@
 use std::env;
 use std::io::Write;
 use std::path::PathBuf;
-use sysinfo::{CpuRefreshKind, MemoryRefreshKind, ProcessRefreshKind, RefreshKind, System, Disks};
+use sysinfo::{ProcessRefreshKind, RefreshKind, System, Disks};
 use crate::state::ShellState;
 use crate::parser::CommandExecution;
 use crate::executor::{get_output_writer, format_duration};
@@ -32,7 +32,13 @@ impl ShellState {
                 let current = env::current_dir().unwrap_or_default();
                 match env::set_current_dir(&target) {
                     Ok(_) => {
-                        self.prev_dir = Some(current);
+                        self.prev_dir = Some(current.clone());
+                        unsafe {
+                            env::set_var("OLDPWD", current);
+                            if let Ok(new_dir) = env::current_dir() {
+                                env::set_var("PWD", new_dir);
+                            }
+                        }
                     }
                     Err(e) => eprintln!("cd: {}: {}", target.display(), e),
                 }
@@ -50,12 +56,6 @@ impl ShellState {
                 true
             }
             "sys" => {
-                self.sys.refresh_specifics(
-                    RefreshKind::nothing()
-                        .with_cpu(CpuRefreshKind::everything())
-                        .with_memory(MemoryRefreshKind::everything())
-                );
-                
                 let mut writer = match get_output_writer(&cmd.output_file, cmd.append) {
                     Ok(w) => w,
                     Err(e) => { eprintln!("vantage: {}", e); return true; }

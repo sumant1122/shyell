@@ -95,9 +95,9 @@ fn main() {
                 }
                 let _ = rl.add_history_entry(line);
                 
-                match shell_words::split(line) {
-                    Ok(words) => {
-                        let cmds = parse_commands(words);
+                match crate::parser::tokenize(line) {
+                    Ok(tokens) => {
+                        let cmds = parse_commands(tokens);
                         execute_commands(cmds, &mut state);
                     }
                     Err(e) => eprintln!("Parse error: {}", e),

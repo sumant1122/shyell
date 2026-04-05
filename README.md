@@ -9,7 +9,9 @@ Unlike traditional shells that are passive, Vantage is active. It monitors your 
 ### Key Differentiators:
 - **Active Dashboard Prompt**: Real-time CPU and Memory status integrated directly into your prompt.
 - **Status-Aware Symbol**: A modern `❯` symbol that turns **green** on success and **red** on failure.
-- **Semantic Context**: Automatically detects if you are in a Rust, Node.js, or Git project and shows relevant stats (e.g., `target/` size, current **Git branch**).
+- **Semantic Context**: Automatically detects if you are in a Rust, Node.js, or Git project and shows relevant system tags (e.g., **Git branch** or project type).
+- **Standards Compliant**: Uses XDG base directories for config/history (e.g., `~/.local/state/vantage/`) to keep your `$HOME` clean and accurately manages standard shell variables like `PWD`/`OLDPWD`.
+- **Advanced Native Tokenizer**: Employs a custom, ultra-fast built-in lexer that strictly respects variable expansion rules inside single and double quotes, with `$PATH` caching for instant `<TAB>` completions.
 - **Pre-flight Guardrails**: Warns you if system resources (CPU/RAM) are too high before you execute a command.
 - **Flight Recorder (Benchmarking)**: Automatically stores benchmarking results in a JSON database and alerts you to performance regressions.
 - **Surgical Built-ins**: Native, high-performance implementations of `sys`, `top`, and `history`.
@@ -82,7 +84,7 @@ ls -la | grep "rs" > rust_files.txt
 Enter a directory and watch the prompt adapt:
 ```bash
 cd my_rust_project
-# The prompt will now show the size of the target/ directory
+# The prompt will instantly highlight that you are inside a Rust context and display your active Git branch.
 ```
 
 ### 5. Historical Analysis
