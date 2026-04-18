@@ -10,39 +10,43 @@
 
 <br>
 
-*(Insert animated GIF of your glowing prompt and benchmarks here)*  
-`![Vantage Demo](./assets/demo.gif)`
+Vantage is a modern shell written natively in Rust, designed for developers who care about system health and workflow performance. It proactively monitors system load and benchmarks your commands in real-time.
 
 </div>
 
 ---
 
-Vantage is an active shell written natively in Rust. It tracks your system health and benchmarks your workflows in real-time, proactively alerting you before your PC struggles with high-load workloads.
+### ✨ Key Features
 
-### ✨ Zero-Config Features
+- 🚦 **Real-time Monitoring**: Memory and CPU status are tracked directly within your prompt environment.
+- 🦀 **Semantic Context**: Automatically detects project types (Rust, Node.js, Python) and Git status to provide relevant context.
+- ⚡ **High-Performance Pipeline**: Built with a custom tokenizer for fast command execution and efficient I/O redirection. 
+- ⏱️ **Flight Recorder**: Prefix commands with `bench` (e.g., `bench cargo build`) to track execution time and receive alerts on performance regressions. 
 
-- 🚦 **Active Edge Dashboard**: Memory & CPU status are calculated directly inside your prompt without any rendering delay.
-- 🦀 **Semantic Context**: Entering a project dynamically spotlights your stack (e.g. `Rust` or `Node.js`) and current `Git` branch.
-- ⚡ **Ultra-Fast Native Tokenizer**: High-performance pipeline parsing guarantees `$PATH` autocompletion happens exactly when you hit `<TAB>`. 
-- ⏱️ **Flight Recorder**: Prefix operations with `bench` (e.g., `bench cargo build`) to persistently log performance histories and receive alerts on regressions. 
+### 📥 Getting Started
 
-### 📥 Install & Go
+**Prerequisites:** [Rust 1.80+](https://www.rust-lang.org/tools/install)
 
 ```bash
-cargo build --release
-./target/release/Vantage
+# Clone the repository
+git clone https://github.com/your-username/Vantage.git
+cd Vantage
+
+# Build and run
+cargo run --release
 ```
 
-### ⌨️ Quick Menu
+### ⌨️ Command Overview
 
-Combine standard Bash-like pipelines (`|`, `<`, `>`) alongside our precision built-ins:
+Vantage supports standard POSIX pipelines and redirections alongside its powerful built-ins:
 
 ```bash
-❯ sys                             # Output a full hardware/kernel report right to terminal
-❯ top                             # Print the top 10 heavy CPU processes
-❯ history                         # Query the latency reports of your `bench` actions
-❯ ls -la | grep "rs" > output.txt # Leverage ultra-fast, robust internal pipelines
-❯ cd my_rust_project              # The prompt automatically updates to standard POSIX contexts
+❯ sys                             # Display a comprehensive system status report
+❯ top                             # List top 10 CPU-intensive processes
+❯ history                         # View performance history of benchmarked commands
+❯ bench ls -la                    # Run a command and measure its performance
+❯ ls -la | grep "rs" > output.txt # Robust internal pipeline support
+❯ cd my_project                   # Context-aware prompt updates (Git, Language)
 ```
 
 ---
@@ -51,12 +55,12 @@ Combine standard Bash-like pipelines (`|`, `<`, `>`) alongside our precision bui
 <summary><b>🛠 Project Architecture</b></summary>
 <br>
 
-- `src/main.rs`: Prompt Engine 
-- `src/parser.rs`: Custom zero-delay lexer/tokenizer
-- `src/builtins.rs`: Fast OS interventions
-- `src/monitor.rs`: Semantic system context polling
-- `src/executor.rs`: Stdin/Stdout pipeline bridges
-- `src/state.rs`: Non-blocking, XDG-standard persistent histories
+- `src/main.rs`: Core prompt engine and event loop.
+- `src/parser.rs`: Custom lexer/tokenizer with support for pipes and redirection.
+- `src/builtins.rs`: Internal shell commands (`sys`, `top`, `bench`, etc.).
+- `src/monitor.rs`: System health monitoring and project context detection.
+- `src/executor.rs`: Process management and I/O pipeline implementation.
+- `src/state.rs`: Persistent state management following XDG standards.
 
 </details>
 
