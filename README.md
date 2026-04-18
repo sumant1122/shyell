@@ -15,6 +15,10 @@ Shyell is a modern shell written natively in Rust, designed for developers who c
 
 ---
 
+### Quick Demo
+
+<img width="800" height="580" alt="shyell-gif" src="https://github.com/user-attachments/assets/30c963c4-076e-4cb0-b7f5-7522e57a55f6" />
+
 ### 📥 Quick Start
 
 **Prerequisites:** [Rust 1.80+](https://www.rust-lang.org/tools/install)
