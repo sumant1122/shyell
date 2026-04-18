@@ -1,4 +1,5 @@
 use std::env;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
@@ -125,13 +126,43 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
-pub fn parse_commands(tokens: Vec<Token>) -> Vec<CommandExecution> {
+pub fn parse_commands(tokens: Vec<Token>, aliases: &HashMap<String, String>) -> Vec<CommandExecution> {
+    let mut expanded_tokens = Vec::new();
+    let mut is_first = true;
+    for token in tokens {
+        if let Token::Word(ref w) = token {
+            if is_first {
+                if w == "bench" {
+                    expanded_tokens.push(token.clone());
+                    continue;
+                } else if let Some(alias_val) = aliases.get(w) {
+                    if let Ok(alias_tokens) = tokenize(alias_val) {
+                        expanded_tokens.extend(alias_tokens);
+                        is_first = false;
+                        continue;
+                    }
+                }
+            }
+        }
+        
+        match &token {
+            Token::Operator(op) if op == "|" => {
+                is_first = true;
+            }
+            Token::Word(_) => {
+                is_first = false;
+            }
+            _ => {}
+        }
+        expanded_tokens.push(token);
+    }
+
     let mut cmds = Vec::new();
     let mut is_bench = false;
     let mut start_idx = 0;
 
-    if !tokens.is_empty() {
-        if let Token::Word(w) = &tokens[0] {
+    if !expanded_tokens.is_empty() {
+        if let Token::Word(w) = &expanded_tokens[0] {
             if w == "bench" {
                 is_bench = true;
                 start_idx = 1;
@@ -147,7 +178,7 @@ pub fn parse_commands(tokens: Vec<Token>) -> Vec<CommandExecution> {
         bench: is_bench,
     };
     
-    let mut iter = tokens.into_iter().skip(start_idx).peekable();
+    let mut iter = expanded_tokens.into_iter().skip(start_idx).peekable();
     while let Some(tok) = iter.next() {
         match tok {
             Token::Operator(op) => {
@@ -218,7 +249,8 @@ mod tests {
     #[test]
     fn test_parse_pipeline() {
         let tokens = tokenize("ls | grep rs").unwrap();
-        let cmds = parse_commands(tokens);
+        let aliases = HashMap::new();
+        let cmds = parse_commands(tokens, &aliases);
         assert_eq!(cmds.len(), 2);
         assert_eq!(cmds[0].args, vec!["ls"]);
         assert_eq!(cmds[1].args, vec!["grep", "rs"]);

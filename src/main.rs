@@ -97,7 +97,7 @@ fn main() {
                 
                 match crate::parser::tokenize(line) {
                     Ok(tokens) => {
-                        let cmds = parse_commands(tokens);
+                        let cmds = parse_commands(tokens, &state.aliases);
                         execute_commands(cmds, &mut state);
                     }
                     Err(e) => eprintln!("Parse error: {}", e),

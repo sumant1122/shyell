@@ -131,6 +131,66 @@ impl ShellState {
                 }
                 true
             }
+            "alias" => {
+                let mut writer = match get_output_writer(&cmd.output_file, cmd.append) {
+                    Ok(w) => w,
+                    Err(e) => { eprintln!("vantage: {}", e); return true; }
+                };
+                if cmd.args.len() < 2 {
+                    for (k, v) in &self.aliases {
+                        writeln!(writer, "alias {}='{}'", k, v).unwrap_or(());
+                    }
+                } else {
+                    let arg = &cmd.args[1];
+                    if let Some(idx) = arg.find('=') {
+                        let key = &arg[..idx];
+                        let val = &arg[idx + 1..];
+                        self.aliases.insert(key.to_string(), val.to_string());
+                        self.save_aliases();
+                    } else {
+                        if let Some(v) = self.aliases.get(arg) {
+                            writeln!(writer, "alias {}='{}'", arg, v).unwrap_or(());
+                        } else {
+                            eprintln!("alias: {}: not found", arg);
+                        }
+                    }
+                }
+                true
+            }
+            "unalias" => {
+                if cmd.args.len() < 2 {
+                    eprintln!("unalias: usage: unalias name");
+                } else {
+                    let key = &cmd.args[1];
+                    if self.aliases.remove(key).is_some() {
+                        self.save_aliases();
+                    } else {
+                        eprintln!("unalias: {}: not found", key);
+                    }
+                }
+                true
+            }
+            "export" => {
+                let mut writer = match get_output_writer(&cmd.output_file, cmd.append) {
+                    Ok(w) => w,
+                    Err(e) => { eprintln!("vantage: {}", e); return true; }
+                };
+                if cmd.args.len() < 2 {
+                    for (k, v) in env::vars() {
+                        writeln!(writer, "{}={}", k, v).unwrap_or(());
+                    }
+                } else {
+                    let arg = &cmd.args[1];
+                    if let Some(idx) = arg.find('=') {
+                        let key = &arg[..idx];
+                        let val = &arg[idx + 1..];
+                        unsafe { env::set_var(key, val); }
+                    } else {
+                        eprintln!("export: usage: export KEY=VALUE");
+                    }
+                }
+                true
+            }
             "help" => {
                 let mut writer = match get_output_writer(&cmd.output_file, cmd.append) {
                     Ok(w) => w,
@@ -145,6 +205,9 @@ impl ShellState {
                 writeln!(writer, "\x1b[1mStandard Commands:\x1b[0m").unwrap_or(());
                 writeln!(writer, "  cd [dir]    Change directory ('cd -' for back).").unwrap_or(());
                 writeln!(writer, "  pwd         Print current directory.").unwrap_or(());
+                writeln!(writer, "  alias       Define or display aliases.").unwrap_or(());
+                writeln!(writer, "  unalias     Remove an alias.").unwrap_or(());
+                writeln!(writer, "  export      Set environment variables.").unwrap_or(());
                 writeln!(writer, "  echo        Print arguments.").unwrap_or(());
                 writeln!(writer, "  exit        Exit the shell.").unwrap_or(());
                 true

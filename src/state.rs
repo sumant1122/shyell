@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use sysinfo::{System, RefreshKind};
 use serde::{Serialize, Deserialize};
 use std::fs;
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BenchmarkResult {
@@ -16,7 +17,9 @@ pub struct ShellState {
     pub sys: System,
     pub history_path: PathBuf,
     pub bench_history_path: PathBuf,
+    pub aliases_path: PathBuf,
     pub bench_results: Vec<BenchmarkResult>,
+    pub aliases: HashMap<String, String>,
     pub last_exit_status: Option<i32>,
 }
 
@@ -29,6 +32,7 @@ impl ShellState {
         }
         let history_path = vantage_dir.join("history");
         let bench_history_path = vantage_dir.join("benchmarks.json");
+        let aliases_path = vantage_dir.join("aliases.json");
 
         let bench_results = if let Ok(content) = fs::read_to_string(&bench_history_path) {
             serde_json::from_str(&content).unwrap_or_default()
@@ -36,12 +40,20 @@ impl ShellState {
             Vec::new()
         };
 
+        let aliases = if let Ok(content) = fs::read_to_string(&aliases_path) {
+            serde_json::from_str(&content).unwrap_or_default()
+        } else {
+            HashMap::new()
+        };
+
         Self {
             prev_dir: None,
             sys: System::new_with_specifics(RefreshKind::nothing()),
             history_path,
             bench_history_path,
+            aliases_path,
             bench_results,
+            aliases,
             last_exit_status: Some(0), // Default to success
         }
     }
@@ -49,6 +61,12 @@ impl ShellState {
     pub fn save_benchmarks(&self) {
         if let Ok(content) = serde_json::to_string_pretty(&self.bench_results) {
             let _ = fs::write(&self.bench_history_path, content);
+        }
+    }
+
+    pub fn save_aliases(&self) {
+        if let Ok(content) = serde_json::to_string_pretty(&self.aliases) {
+            let _ = fs::write(&self.aliases_path, content);
         }
     }
 
