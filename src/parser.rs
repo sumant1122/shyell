@@ -1,5 +1,5 @@
-use std::env;
 use std::collections::HashMap;
+use std::env;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
@@ -34,13 +34,13 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
     let chars: Vec<char> = line.chars().collect();
     let mut i = 0;
-    
+
     while i < chars.len() {
         if chars[i].is_whitespace() {
             i += 1;
             continue;
         }
-        
+
         if chars[i] == '&' {
             if i + 1 < chars.len() && chars[i + 1] == '&' {
                 tokens.push(Token::Operator("&&".to_string()));
@@ -69,7 +69,7 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>, String> {
             i += 1;
             continue;
         }
-        
+
         if chars[i] == '>' {
             if i + 1 < chars.len() && chars[i + 1] == '>' {
                 tokens.push(Token::Operator(">>".to_string()));
@@ -80,22 +80,24 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>, String> {
             }
             continue;
         }
-        
+
         let mut current_word = String::new();
         let mut in_single = false;
         let mut in_double = false;
-        
+
         // Unquoted tilde expansion at start of word
-        if chars[i] == '~' && (i + 1 == chars.len() || chars[i + 1].is_whitespace() || chars[i + 1] == '/') {
+        if chars[i] == '~'
+            && (i + 1 == chars.len() || chars[i + 1].is_whitespace() || chars[i + 1] == '/')
+        {
             if let Some(home) = dirs::home_dir() {
                 current_word.push_str(&home.to_string_lossy());
                 i += 1;
             }
         }
-        
+
         while i < chars.len() {
             let c = chars[i];
-            
+
             if c == '\\' && !in_single {
                 if i + 1 < chars.len() {
                     current_word.push(chars[i + 1]);
@@ -103,25 +105,25 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>, String> {
                     continue;
                 }
             }
-            
+
             if c == '\'' && !in_double {
                 in_single = !in_single;
                 i += 1;
                 continue;
             }
-            
+
             if c == '"' && !in_single {
                 in_double = !in_double;
                 i += 1;
                 continue;
             }
-            
+
             if !in_single && !in_double {
                 if c.is_whitespace() || c == '|' || c == '<' || c == '>' || c == '&' || c == ';' {
                     break;
                 }
             }
-            
+
             if c == '$' && !in_single {
                 let mut var = String::new();
                 i += 1;
@@ -149,21 +151,24 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>, String> {
                 }
                 continue;
             }
-            
+
             current_word.push(c);
             i += 1;
         }
-        
+
         if in_single || in_double {
             return Err("Unclosed quote".to_string());
         }
-        
+
         tokens.push(Token::Word(current_word));
     }
     Ok(tokens)
 }
 
-pub fn parse_commands(tokens: Vec<Token>, aliases: &HashMap<String, String>) -> Vec<PipelineExecution> {
+pub fn parse_commands(
+    tokens: Vec<Token>,
+    aliases: &HashMap<String, String>,
+) -> Vec<PipelineExecution> {
     let mut expanded_tokens = Vec::new();
     let mut is_first = true;
     for token in tokens {
@@ -181,7 +186,7 @@ pub fn parse_commands(tokens: Vec<Token>, aliases: &HashMap<String, String>) -> 
                 }
             }
         }
-        
+
         match &token {
             Token::Operator(op) if op == "|" || op == "&&" || op == "||" || op == ";" => {
                 is_first = true;
@@ -196,7 +201,7 @@ pub fn parse_commands(tokens: Vec<Token>, aliases: &HashMap<String, String>) -> 
 
     let mut pipelines = Vec::new();
     let mut current_pipeline = Vec::new();
-    
+
     let mut current_cmd = CommandExecution {
         args: Vec::new(),
         input_file: None,
@@ -204,7 +209,7 @@ pub fn parse_commands(tokens: Vec<Token>, aliases: &HashMap<String, String>) -> 
         append: false,
         bench: false,
     };
-    
+
     let mut iter = expanded_tokens.into_iter().peekable();
     let mut expecting_new_command = true;
 
@@ -220,77 +225,81 @@ pub fn parse_commands(tokens: Vec<Token>, aliases: &HashMap<String, String>) -> 
         }
 
         match tok {
-            Token::Operator(op) => {
-                match op.as_str() {
-                    "|" => {
-                        current_pipeline.push(current_cmd);
-                        current_cmd = CommandExecution {
-                            args: Vec::new(),
-                            input_file: None,
-                            output_file: None,
-                            append: false,
-                            bench: false,
-                        };
-                        expecting_new_command = true;
-                    }
-                    "&&" | "||" | ";" => {
-                        if !current_cmd.args.is_empty() || current_cmd.input_file.is_some() || current_cmd.output_file.is_some() {
-                            current_pipeline.push(current_cmd);
-                        }
-                        
-                        let control_op = match op.as_str() {
-                            "&&" => ControlOp::And,
-                            "||" => ControlOp::Or,
-                            ";" => ControlOp::Semi,
-                            _ => ControlOp::None,
-                        };
-
-                        if !current_pipeline.is_empty() {
-                            pipelines.push(PipelineExecution {
-                                commands: current_pipeline,
-                                control_op,
-                            });
-                        }
-                        
-                        current_pipeline = Vec::new();
-                        current_cmd = CommandExecution {
-                            args: Vec::new(),
-                            input_file: None,
-                            output_file: None,
-                            append: false,
-                            bench: false,
-                        };
-                        expecting_new_command = true;
-                    }
-                    ">" => {
-                        if let Some(Token::Word(file)) = iter.next() {
-                            current_cmd.output_file = Some(file);
-                        }
-                    }
-                    ">>" => {
-                        if let Some(Token::Word(file)) = iter.next() {
-                            current_cmd.output_file = Some(file);
-                            current_cmd.append = true;
-                        }
-                    }
-                    "<" => {
-                        if let Some(Token::Word(file)) = iter.next() {
-                            current_cmd.input_file = Some(file);
-                        }
-                    }
-                    _ => {}
+            Token::Operator(op) => match op.as_str() {
+                "|" => {
+                    current_pipeline.push(current_cmd);
+                    current_cmd = CommandExecution {
+                        args: Vec::new(),
+                        input_file: None,
+                        output_file: None,
+                        append: false,
+                        bench: false,
+                    };
+                    expecting_new_command = true;
                 }
-            }
+                "&&" | "||" | ";" => {
+                    if !current_cmd.args.is_empty()
+                        || current_cmd.input_file.is_some()
+                        || current_cmd.output_file.is_some()
+                    {
+                        current_pipeline.push(current_cmd);
+                    }
+
+                    let control_op = match op.as_str() {
+                        "&&" => ControlOp::And,
+                        "||" => ControlOp::Or,
+                        ";" => ControlOp::Semi,
+                        _ => ControlOp::None,
+                    };
+
+                    if !current_pipeline.is_empty() {
+                        pipelines.push(PipelineExecution {
+                            commands: current_pipeline,
+                            control_op,
+                        });
+                    }
+
+                    current_pipeline = Vec::new();
+                    current_cmd = CommandExecution {
+                        args: Vec::new(),
+                        input_file: None,
+                        output_file: None,
+                        append: false,
+                        bench: false,
+                    };
+                    expecting_new_command = true;
+                }
+                ">" => {
+                    if let Some(Token::Word(file)) = iter.next() {
+                        current_cmd.output_file = Some(file);
+                    }
+                }
+                ">>" => {
+                    if let Some(Token::Word(file)) = iter.next() {
+                        current_cmd.output_file = Some(file);
+                        current_cmd.append = true;
+                    }
+                }
+                "<" => {
+                    if let Some(Token::Word(file)) = iter.next() {
+                        current_cmd.input_file = Some(file);
+                    }
+                }
+                _ => {}
+            },
             Token::Word(w) => {
                 current_cmd.args.push(w);
             }
         }
     }
-    
-    if !current_cmd.args.is_empty() || current_cmd.input_file.is_some() || current_cmd.output_file.is_some() {
+
+    if !current_cmd.args.is_empty()
+        || current_cmd.input_file.is_some()
+        || current_cmd.output_file.is_some()
+    {
         current_pipeline.push(current_cmd);
     }
-    
+
     if !current_pipeline.is_empty() {
         pipelines.push(PipelineExecution {
             commands: current_pipeline,
@@ -325,7 +334,7 @@ mod tests {
         assert_eq!(cmds[0].args, vec!["ls"]);
         assert_eq!(cmds[1].args, vec!["grep", "rs"]);
     }
-    
+
     #[test]
     fn test_parse_control_ops() {
         let tokens = tokenize("echo a && echo b || echo c ; echo d").unwrap();

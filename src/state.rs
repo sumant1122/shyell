@@ -1,8 +1,8 @@
-use std::path::PathBuf;
-use sysinfo::{System, RefreshKind};
-use serde::{Serialize, Deserialize};
-use std::fs;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
+use sysinfo::{RefreshKind, System};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BenchmarkResult {
@@ -25,7 +25,8 @@ pub struct ShellState {
 
 impl ShellState {
     pub fn new() -> Self {
-        let data_dir = dirs::data_local_dir().unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from(".")));
+        let data_dir = dirs::data_local_dir()
+            .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from(".")));
         let shyell_dir = data_dir.join("shyell");
         if !shyell_dir.exists() {
             let _ = std::fs::create_dir_all(&shyell_dir);

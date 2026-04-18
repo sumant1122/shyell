@@ -4,10 +4,10 @@ use rustyline::highlight::Highlighter;
 use rustyline::hint::Hinter;
 use rustyline::validate::Validator;
 use rustyline::{Context, Helper};
+use std::borrow::Cow;
+use std::cell::RefCell;
 use std::env;
 use std::fs;
-use std::cell::RefCell;
-use std::borrow::Cow;
 
 pub struct ShyellHelper {
     pub filename_completer: FilenameCompleter,
@@ -20,9 +20,18 @@ impl ShyellHelper {
         Self {
             filename_completer: FilenameCompleter::new(),
             builtins: vec![
-                "cd".into(), "pwd".into(), "sys".into(), "top".into(), 
-                "history".into(), "help".into(), "echo".into(), "exit".into(), "bench".into(),
-                "alias".into(), "unalias".into(), "export".into()
+                "cd".into(),
+                "pwd".into(),
+                "sys".into(),
+                "top".into(),
+                "history".into(),
+                "help".into(),
+                "echo".into(),
+                "exit".into(),
+                "bench".into(),
+                "alias".into(),
+                "unalias".into(),
+                "export".into(),
             ],
             path_cache: RefCell::new(None),
         }
@@ -48,7 +57,8 @@ impl ShyellHelper {
                             #[cfg(unix)]
                             {
                                 use std::os::unix::fs::PermissionsExt;
-                                if metadata.is_file() && metadata.permissions().mode() & 0o111 != 0 {
+                                if metadata.is_file() && metadata.permissions().mode() & 0o111 != 0
+                                {
                                     binaries.push(name);
                                 }
                             }
@@ -69,7 +79,11 @@ impl ShyellHelper {
 
         let cache = self.path_cache.borrow();
         let binaries = &cache.as_ref().unwrap().1;
-        binaries.iter().filter(|b| b.starts_with(prefix)).cloned().collect()
+        binaries
+            .iter()
+            .filter(|b| b.starts_with(prefix))
+            .cloned()
+            .collect()
     }
 }
 
@@ -82,13 +96,14 @@ impl Completer for ShyellHelper {
         pos: usize,
         ctx: &Context<'_>,
     ) -> Result<(usize, Vec<Pair>), ReadlineError> {
-        let (start, word) = rustyline::completion::extract_word(line, pos, None, |c| c == '|' || c == ' ');
-        
+        let (start, word) =
+            rustyline::completion::extract_word(line, pos, None, |c| c == '|' || c == ' ');
+
         let is_command = start == 0 || (start > 1 && line[..start].trim_end().ends_with('|'));
 
         if is_command {
             let mut matches = Vec::new();
-            
+
             for builtin in &self.builtins {
                 if builtin.starts_with(word) {
                     matches.push(Pair {
@@ -120,14 +135,15 @@ impl Helper for ShyellHelper {}
 
 impl Hinter for ShyellHelper {
     type Hint = String;
-    
+
     fn hint(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> Option<String> {
         if line.is_empty() || pos < line.len() {
             return None;
         }
-        
+
         let word = line.split_whitespace().last().unwrap_or("");
-        if line.len() == word.len() { // Only hint if it's the first word
+        if line.len() == word.len() {
+            // Only hint if it's the first word
             for builtin in &self.builtins {
                 if builtin.starts_with(word) && builtin != word {
                     return Some(builtin[word.len()..].to_string());
@@ -141,7 +157,10 @@ impl Hinter for ShyellHelper {
 impl Highlighter for ShyellHelper {
     fn highlight<'l>(&self, line: &'l str, _pos: usize) -> Cow<'l, str> {
         for builtin in &self.builtins {
-            if line.starts_with(builtin) && (line.len() == builtin.len() || line.as_bytes()[builtin.len()].is_ascii_whitespace()) {
+            if line.starts_with(builtin)
+                && (line.len() == builtin.len()
+                    || line.as_bytes()[builtin.len()].is_ascii_whitespace())
+            {
                 let highlighted = format!("\x1b[32m{}\x1b[0m{}", builtin, &line[builtin.len()..]);
                 return Cow::Owned(highlighted);
             }

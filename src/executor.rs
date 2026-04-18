@@ -1,11 +1,11 @@
+use crate::monitor::Monitor;
+use crate::parser::{ControlOp, PipelineExecution};
+use crate::state::ShellState;
+use chrono::Duration;
 use std::fs::File;
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::time::Instant;
-use chrono::Duration;
-use crate::state::ShellState;
-use crate::parser::{PipelineExecution, ControlOp};
-use crate::monitor::Monitor;
 
 pub fn format_duration(seconds: u64) -> String {
     let d = Duration::seconds(seconds as i64);
@@ -21,10 +21,16 @@ pub fn format_duration(seconds: u64) -> String {
     }
 }
 
-pub fn get_output_writer(output_file: &Option<String>, append: bool) -> Result<Box<dyn Write>, String> {
+pub fn get_output_writer(
+    output_file: &Option<String>,
+    append: bool,
+) -> Result<Box<dyn Write>, String> {
     if let Some(file) = output_file {
         let f = if append {
-            std::fs::OpenOptions::new().create(true).append(true).open(file)
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(file)
         } else {
             File::create(file)
         };
@@ -63,7 +69,9 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
                     }
                     continue;
                 }
-                _ => { skip_next = false; }
+                _ => {
+                    skip_next = false;
+                }
             }
         }
 
@@ -73,7 +81,8 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
         }
 
         let is_bench = cmds[0].bench;
-        let full_command = cmds.iter()
+        let full_command = cmds
+            .iter()
             .map(|c| c.args.join(" "))
             .collect::<Vec<_>>()
             .join(" | ");
@@ -84,7 +93,10 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
             state.last_exit_status = Some(0); // Built-ins handled so far return success
             if let Some(start) = start_time {
                 let elapsed = start.elapsed();
-                println!("\x1b[1;35mBench: Built-in command took {:?}\x1b[0m", elapsed);
+                println!(
+                    "\x1b[1;35mBench: Built-in command took {:?}\x1b[0m",
+                    elapsed
+                );
                 state.add_benchmark(full_command, elapsed.as_secs_f64(), Some(0));
             }
         } else {
@@ -119,7 +131,10 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
 
                 let stdout = if let Some(ref out_file) = cmd_exec.output_file {
                     let f = if cmd_exec.append {
-                        std::fs::OpenOptions::new().create(true).append(true).open(out_file)
+                        std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(out_file)
                     } else {
                         File::create(out_file)
                     };
@@ -176,7 +191,7 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
             if let Some(start) = start_time {
                 let elapsed = start.elapsed();
                 let exit_code = state.last_exit_status;
-                
+
                 println!("\x1b[1;35m--- Benchmark Results ---\x1b[0m");
                 println!("{:<15} {:?}", "Execution Time:", elapsed);
                 if let Some(code) = exit_code {
