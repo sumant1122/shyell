@@ -30,7 +30,7 @@ cargo run --release
 
 ### 📖 Documentation
 
-For detailed information on features, command usage, and project architecture, please refer to the **[Full Documentation](documentation.md)**.
+For a comprehensive guide on features, command usage, and project architecture, please refer to the **[Full Documentation](documentation.md)**.
 
 ### ✨ Highlights
 
