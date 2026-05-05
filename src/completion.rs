@@ -127,9 +127,33 @@ impl Completer for ShyellHelper {
             }
         }
 
+        // Context-aware completion: if command is 'cd', only show directories
+        if line[..start].trim() == "cd" {
+             let mut matches = Vec::new();
+             if let Ok(entries) = fs::read_dir(env::current_dir().unwrap_or_else(|_| ".".into())) {
+                 for entry in entries.flatten() {
+                     if let Ok(metadata) = entry.metadata() {
+                         if metadata.is_dir() {
+                             let name = entry.file_name().to_string_lossy().to_string();
+                             if name.starts_with(word) {
+                                 matches.push(Pair {
+                                     display: name.clone(),
+                                     replacement: name,
+                                 });
+                             }
+                         }
+                     }
+                 }
+             }
+             if !matches.is_empty() {
+                 return Ok((start, matches));
+             }
+        }
+
         self.filename_completer.complete(line, pos, ctx)
     }
 }
+
 
 impl Helper for ShyellHelper {}
 

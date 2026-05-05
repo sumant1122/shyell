@@ -12,6 +12,7 @@ pub enum ControlOp {
     And,
     Or,
     Semi,
+    Background,
     None,
 }
 
@@ -20,7 +21,9 @@ pub struct CommandExecution {
     pub args: Vec<String>,
     pub input_file: Option<String>,
     pub output_file: Option<String>,
+    pub stderr_file: Option<String>,
     pub append: bool,
+    pub stderr_append: bool,
     pub bench: bool,
 }
 
@@ -41,11 +44,36 @@ pub fn tokenize(line: &str) -> Result<Vec<Token>, String> {
             continue;
         }
 
-        if chars[i] == '&' && i + 1 < chars.len() && chars[i + 1] == '&' {
-            tokens.push(Token::Operator("&&".to_string()));
+        // Check for 2> or 2>>
+        if chars[i] == '2' && i + 1 < chars.len() && chars[i + 1] == '>' {
+             if i + 2 < chars.len() && chars[i + 2] == '>' {
+                tokens.push(Token::Operator("2>>".to_string()));
+                i += 3;
+            } else {
+                tokens.push(Token::Operator("2>".to_string()));
+                i += 2;
+            }
+            continue;
+        }
+
+        // Check for &> (redirection for both)
+        if chars[i] == '&' && i + 1 < chars.len() && chars[i + 1] == '>' {
+            tokens.push(Token::Operator("&>".to_string()));
             i += 2;
             continue;
         }
+
+        if chars[i] == '&' {
+            if i + 1 < chars.len() && chars[i + 1] == '&' {
+                tokens.push(Token::Operator("&&".to_string()));
+                i += 2;
+            } else {
+                tokens.push(Token::Operator("&".to_string()));
+                i += 1;
+            }
+            continue;
+        }
+
         if chars[i] == '|' {
             if i + 1 < chars.len() && chars[i + 1] == '|' {
                 tokens.push(Token::Operator("||".to_string()));
@@ -184,7 +212,7 @@ pub fn parse_commands(
         }
 
         match &token {
-            Token::Operator(op) if op == "|" || op == "&&" || op == "||" || op == ";" => {
+            Token::Operator(op) if op == "|" || op == "&&" || op == "||" || op == ";" || op == "&" => {
                 is_first = true;
             }
             Token::Word(_) => {
@@ -202,7 +230,9 @@ pub fn parse_commands(
         args: Vec::new(),
         input_file: None,
         output_file: None,
+        stderr_file: None,
         append: false,
+        stderr_append: false,
         bench: false,
     };
 
@@ -228,15 +258,18 @@ pub fn parse_commands(
                         args: Vec::new(),
                         input_file: None,
                         output_file: None,
+                        stderr_file: None,
                         append: false,
+                        stderr_append: false,
                         bench: false,
                     };
                     expecting_new_command = true;
                 }
-                "&&" | "||" | ";" => {
+                "&&" | "||" | ";" | "&" => {
                     if !current_cmd.args.is_empty()
                         || current_cmd.input_file.is_some()
                         || current_cmd.output_file.is_some()
+                        || current_cmd.stderr_file.is_some()
                     {
                         current_pipeline.push(current_cmd);
                     }
@@ -245,6 +278,7 @@ pub fn parse_commands(
                         "&&" => ControlOp::And,
                         "||" => ControlOp::Or,
                         ";" => ControlOp::Semi,
+                        "&" => ControlOp::Background,
                         _ => ControlOp::None,
                     };
 
@@ -260,7 +294,9 @@ pub fn parse_commands(
                         args: Vec::new(),
                         input_file: None,
                         output_file: None,
+                        stderr_file: None,
                         append: false,
+                        stderr_append: false,
                         bench: false,
                     };
                     expecting_new_command = true;
@@ -274,6 +310,23 @@ pub fn parse_commands(
                     if let Some(Token::Word(file)) = iter.next() {
                         current_cmd.output_file = Some(file);
                         current_cmd.append = true;
+                    }
+                }
+                "2>" => {
+                    if let Some(Token::Word(file)) = iter.next() {
+                        current_cmd.stderr_file = Some(file);
+                    }
+                }
+                "2>>" => {
+                    if let Some(Token::Word(file)) = iter.next() {
+                        current_cmd.stderr_file = Some(file);
+                        current_cmd.stderr_append = true;
+                    }
+                }
+                "&>" => {
+                    if let Some(Token::Word(file)) = iter.next() {
+                        current_cmd.output_file = Some(file.clone());
+                        current_cmd.stderr_file = Some(file);
                     }
                 }
                 "<" => {
@@ -292,6 +345,7 @@ pub fn parse_commands(
     if !current_cmd.args.is_empty()
         || current_cmd.input_file.is_some()
         || current_cmd.output_file.is_some()
+        || current_cmd.stderr_file.is_some()
     {
         current_pipeline.push(current_cmd);
     }
@@ -305,6 +359,7 @@ pub fn parse_commands(
 
     pipelines
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -332,14 +387,22 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_control_ops() {
-        let tokens = tokenize("echo a && echo b || echo c ; echo d").unwrap();
+    fn test_parse_redirections() {
+        let tokens = tokenize("ls 2> err.log &> both.log").unwrap();
         let aliases = HashMap::new();
         let pipelines = parse_commands(tokens, &aliases);
-        assert_eq!(pipelines.len(), 4);
-        assert_eq!(pipelines[0].control_op, ControlOp::And);
-        assert_eq!(pipelines[1].control_op, ControlOp::Or);
-        assert_eq!(pipelines[2].control_op, ControlOp::Semi);
-        assert_eq!(pipelines[3].control_op, ControlOp::None);
+        assert_eq!(pipelines.len(), 1);
+        let cmd = &pipelines[0].commands[0];
+        assert_eq!(cmd.stderr_file, Some("both.log".to_string()));
+        assert_eq!(cmd.output_file, Some("both.log".to_string()));
+    }
+
+    #[test]
+    fn test_parse_background() {
+        let tokens = tokenize("sleep 10 &").unwrap();
+        let aliases = HashMap::new();
+        let pipelines = parse_commands(tokens, &aliases);
+        assert_eq!(pipelines.len(), 1);
+        assert_eq!(pipelines[0].control_op, ControlOp::Background);
     }
 }

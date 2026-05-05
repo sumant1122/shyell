@@ -77,8 +77,8 @@ fn get_prompt(state: &mut ShellState) -> String {
 
     // Main prompt
     prompt.push_str(&format!(
-        "\x1b[1;32m{}\x1b[0m:\x1b[1;34m{}\x1b[0m {} ",
-        user, cwd_str, symbol
+        "\x1b[{}m{}\x1b[0m:\x1b[{}m{}\x1b[0m {} ",
+        state.config.prompt_color_user, user, state.config.prompt_color_cwd, cwd_str, symbol
     ));
 
     prompt
@@ -87,12 +87,24 @@ fn get_prompt(state: &mut ShellState) -> String {
 fn main() {
     let mut state = ShellState::new();
 
+    // Signal handling: Prevent shell from exiting on Ctrl+C
+    ctrlc::set_handler(move || {
+        // Do nothing, just consume the signal
+        // Child processes receive it automatically if they are in the same process group
+    }).expect("Error setting Ctrl-C handler");
+
     let config = Config::builder()
         .edit_mode(EditMode::Emacs)
         .completion_type(rustyline::CompletionType::List)
         .build();
 
-    let mut rl: Editor<ShyellHelper, _> = Editor::with_config(config).unwrap();
+    let mut rl: Editor<ShyellHelper, _> = match Editor::with_config(config) {
+        Ok(e) => e,
+        Err(e) => {
+            eprintln!("Failed to initialize editor: {}", e);
+            return;
+        }
+    };
     rl.set_helper(Some(ShyellHelper::new()));
 
     let _ = rl.load_history(&state.history_path);
@@ -129,3 +141,4 @@ fn main() {
     let _ = rl.save_history(&state.history_path);
     state.save_benchmarks();
 }
+

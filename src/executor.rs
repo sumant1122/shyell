@@ -81,6 +81,8 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
         }
 
         let is_bench = cmds[0].bench;
+        let is_background = pipeline.control_op == ControlOp::Background;
+
         let full_command = cmds
             .iter()
             .map(|c| c.args.join(" "))
@@ -90,7 +92,7 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
         let start_time = if is_bench { Some(Instant::now()) } else { None };
 
         if cmds.len() == 1 && state.execute_builtins(&cmds[0]) {
-            state.last_exit_status = Some(0); // Built-ins handled so far return success
+            state.last_exit_status = Some(0);
             if let Some(start) = start_time {
                 let elapsed = start.elapsed();
                 println!(
@@ -153,6 +155,28 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
                     Stdio::inherit()
                 };
 
+                let stderr = if let Some(ref err_file) = cmd_exec.stderr_file {
+                    let f = if cmd_exec.stderr_append {
+                        std::fs::OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(err_file)
+                    } else {
+                        File::create(err_file)
+                    };
+                    match f {
+                        Ok(f) => Stdio::from(f),
+                        Err(e) => {
+                            eprintln!("shyell: {}: {}", err_file, e);
+                            state.last_exit_status = Some(1);
+                            error_occurred = true;
+                            break;
+                        }
+                    }
+                } else {
+                    Stdio::inherit()
+                };
+
                 let command = &cmd_exec.args[0];
                 let args = &cmd_exec.args[1..];
 
@@ -160,6 +184,11 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
                 cmd.args(args);
                 cmd.stdin(stdin);
                 cmd.stdout(stdout);
+                cmd.stderr(stderr);
+                
+                // Clear inherited env and use our internal map
+                cmd.env_clear();
+                cmd.envs(&state.env_vars);
 
                 match cmd.spawn() {
                     Ok(mut child) => {
@@ -178,14 +207,19 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
             }
 
             if !error_occurred {
-                let mut last_status = None;
-                for (name, mut child) in children {
-                    match child.wait() {
-                        Ok(s) => last_status = Some(s),
-                        Err(e) => eprintln!("shyell: error waiting for {}: {}", name, e),
+                if is_background {
+                    println!("[background job started]");
+                    state.last_exit_status = Some(0);
+                } else {
+                    let mut last_status = None;
+                    for (name, mut child) in children {
+                        match child.wait() {
+                            Ok(s) => last_status = Some(s),
+                            Err(e) => eprintln!("shyell: error waiting for {}: {}", name, e),
+                        }
                     }
+                    state.last_exit_status = last_status.and_then(|s| s.code()).or(Some(0));
                 }
-                state.last_exit_status = last_status.and_then(|s| s.code()).or(Some(0));
             }
 
             if let Some(start) = start_time {
@@ -216,9 +250,10 @@ pub fn execute_commands(pipelines: Vec<PipelineExecution>, state: &mut ShellStat
                     skip_op = ControlOp::Or;
                 }
             }
-            ControlOp::Semi | ControlOp::None => {
+            ControlOp::Semi | ControlOp::Background | ControlOp::None => {
                 skip_next = false;
             }
         }
     }
 }
+

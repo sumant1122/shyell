@@ -39,10 +39,13 @@ For a comprehensive guide on features, command usage, and project architecture, 
 
 ### ✨ Highlights
 
-- 🚦 **Real-time Monitoring**: Integrated CPU/Memory stats.
-- 🦀 **Semantic Context**: Automatic project stack detection.
-- ⏱️ **Flight Recorder**: Real-time command benchmarking and regression alerts.
-- ⚡ **Advanced Parsing**: Support for pipes, redirection, `&&`, `||`, and `;`.
+- 🚦 **Real-time Monitoring**: Integrated CPU/Memory stats directly in your prompt.
+- 🦀 **Semantic Context**: Automatic project stack detection (Rust, Node.js, Go, etc.).
+- ⏱️ **Flight Recorder**: Real-time command benchmarking with historical regression alerts and sparklines.
+- ⚙️ **Configurable**: Fully customizable via `config.json` (colors, aliases, environment).
+- ⚡ **Advanced Execution**: Support for pipes, background jobs (`&`), and complex redirection (`2>`, `&>`).
+- 🛡️ **Built for Safety**: Improved signal handling (Ctrl+C) and thread-safe environment management.
+- 🧱 **Extensible Architecture**: Trait-based built-in command system for easy expansion.
 
 ---
 
